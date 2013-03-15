@@ -8,29 +8,21 @@
 define(['text'], function(text) {
 
   var buildMap  = {},
-      keyMaps   = {},
-      jsonParse = (typeof JSON !== 'undefined' && typeof JSON.parse === 'function')? JSON.parse : function(val){
-                    return eval('('+ val +')'); //quick and dirty
+      keyMaps   = {};
+
+  var jsonParse = (typeof JSON !== 'undefined' && typeof JSON.parse === 'function')? JSON.parse : function(val){
+    return eval('('+ val +')'); //quick and dirty
   };
 
-
-
-  function buildWrapper(data, keyMapData) {
-    var out =  "(function() {"
-        out += "  var keyMap = " + keyMapData + ", data = " + data + ", out = {};";
-        out += "  for (var key in data) {";
-        out += "    if (data.hasOwnProperty(key)) {";
-        out += "      out[keyMap[key]] = data[key];";
-        out += "    }";
-        out += "  }";
-        out += "  return out;"
-        out += "})()";
-
-    return out;
+  if(!Array.isArray) {
+    Array.isArray = function (vArg) {
+      return Object.prototype.toString.call(vArg) === "[object Array]";
+    };
   }
 
 
-  return {
+
+  var inflate = {
 
 
     load : function(name, req, onLoad, config) {
@@ -46,16 +38,9 @@ define(['text'], function(text) {
           } else {
 
             var json   = jsonParse(data),
-                keyMap = jsonParse(keyMapData),
-                out    = {};
+                keyMap = jsonParse(keyMapData);
 
-            for (var key in json) {
-              if (json.hasOwnProperty(key)) {
-                out[keyMap[key]] = json[key];
-              }
-            }
-
-            onLoad(out);
+            onLoad(inflate.inflate(json, keyMap));
           }
         });
       },
@@ -75,11 +60,49 @@ define(['text'], function(text) {
         var data       = buildMap[moduleName],
             keyMapData = keyMaps[moduleName];
 
-        write('define("'+ pluginName +'!'+ moduleName +
-              '", function(){ return '+
-              buildWrapper(data, keyMapData) +
-              ';});\n');
+        write('define("'+ pluginName + '!' + moduleName + '", ["inflate"],' +
+              'function(inflate){ ' +
+                'return inflate.inflate(' + data + ', ' + keyMapData + ');' +
+              '});\n');
       }
+    },
+
+
+
+    inflate: function(data, keyMap) {
+      if (Array.isArray(data)) {
+        return inflate.inflateArray(data, keyMap);
+      } else {
+        return inflate.inflateObject(data, keyMap);
+      }
+    },
+
+
+
+    inflateArray: function(data, keyMap) {
+      var inflated = [];
+
+      for (var i = 0; i < data.length; i++) {
+        inflated.push(inflate.inflate(data[i], keyMap));
+      }
+
+      return inflated;
+    },
+
+
+
+    inflateObject: function(data, keyMap) {
+      var inflated = {};
+
+      for (var key in data) {
+        if (data.hasOwnProperty(key)) {
+          inflated[keyMap[key]] = data[key];
+        }
+      }
+
+      return inflated;
     }
   };
+
+  return inflate;
 });
