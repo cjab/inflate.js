@@ -96,7 +96,13 @@ define(['text'], function(text) {
 
       for (var key in data) {
         if (data.hasOwnProperty(key)) {
-          inflated[keyMap[key]] = data[key];
+          var value = data[key];
+
+          if (typeof value === "object") {
+            value = inflate.inflate(value, keyMap);
+          }
+
+          inflated[keyMap[key]] = value;
         }
       }
 

@@ -52,7 +52,13 @@ function deflateObject(data, keyMap) {
         keyMap[key] = deflatedKey;
       }
 
-      deflated[deflatedKey] = data[key];
+      var value = data[key];
+
+      if (typeof data[key] === "object") {
+        value = deflate(value, keyMap);
+      }
+
+      deflated[deflatedKey] = value;
     }
   }
 
